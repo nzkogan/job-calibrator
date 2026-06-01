@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Fit Calibrator v4</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a18; min-height: 100vh; }
+.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.12); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+.nav-title { font-size: 15px; font-weight: 500; }
+.nav-tabs { display: flex; }
+.nav-tab { padding: 0 16px; height: 52px; display: flex; align-items: center; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: #888; transition: color 0.15s; }
+.nav-tab.active { color: #1a1a18; border-bottom-color: #1a1a18; }
+.nav-tab:hover { color: #1a1a18; }
+.page { display: none; padding: 2rem; max-width: 920px; margin: 0 auto; }
+.page.active { display: block; }
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+.card { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.field-row.three { grid-template-columns: 1fr 1fr 1fr; }
+.field-row.full { grid-template-columns: 1fr; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: #666; font-weight: 500; }
+.field input, .field select, .field textarea { border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; background: #fff; color: #1a1a18; transition: border-color 0.15s; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: rgba(0,0,0,0.5); }
+.field textarea { resize: vertical; min-height: 60px; }
+.score-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.score-label { font-size: 13px; color: #444; flex: 1; min-width: 160px; }
+.score-sub { font-size: 11px; color: #999; display: block; margin-top: 1px; }
+.score-slider { flex: 2; }
+.score-slider input[type=range] { width: 100%; accent-color: #1a1a18; }
+.score-val { font-size: 13px; font-weight: 500; min-width: 20px; text-align: right; }
+.divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.1); margin: 1rem 0; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid rgba(0,0,0,0.2); background: #fff; color: #1a1a18; font-family: inherit; transition: background 0.12s; }
+.btn:hover { background: #f5f4f0; }
+.btn.primary { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+.btn.primary:hover { background: #333; }
+.btn.danger { color: #a32d2d; border-color: rgba(163,45,45,0.3); }
+.btn.danger:hover { background: #fcebeb; }
+.btn-row { display: flex; gap: 8px; margin-top: 1.25rem; flex-wrap: wrap; }
+.score-display { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 1rem 0; }
+.score-card { border-radius: 10px; padding: 0.9rem 1rem; text-align: center; }
+.sc-label { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+.sc-num { font-size: 32px; font-weight: 500; line-height: 1; }
+.sc-sub { font-size: 11px; margin-top: 3px; }
+.fit-card { background: #eaf3de; }
+.fit-card .sc-label { color: #3b6d11; }
+.fit-card .sc-num { color: #27500a; }
+.likelihood-card { background: #e6f1fb; }
+.likelihood-card .sc-label { color: #185fa5; }
+.likelihood-card .sc-num { color: #0c447c; }
+.harmonic-card { background: #f5f4f0; border: 0.5px solid rgba(0,0,0,0.1); }
+.harmonic-card .sc-label { color: #555; }
+.harmonic-card .sc-num { color: #1a1a18; }
+.warning-banner { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 0.5rem 0 0.75rem; display: none; align-items: center; gap: 8px; }
+.warning-banner.visible { display: flex; }
+.warning-banner.dealbreaker { background: #fcebeb; border: 0.5px solid rgba(163,45,45,0.3); color: #a32d2d; }
+.warning-banner.softflag { background: #faeeda; border: 0.5px solid rgba(186,117,23,0.3); color: #633806; }
+.verdict { font-size: 14px; font-weight: 500; text-align: center; margin-top: 8px; padding: 10px; border-radius: 8px; }
+.verdict.apply { background: #eaf3de; color: #27500a; }
+.verdict.consider { background: #faeeda; color: #633806; }
+.verdict.pass { background: #fcebeb; color: #791f1f; }
+.verdict.watchlist { background: #eeedfe; color: #3c3489; }
+.verdict.callback { background: #d4f0f7; color: #0c4a6e; }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.filter-bar label { font-size: 12px; color: #888; white-space: nowrap; }
+.filter-bar select { border: 0.5px solid rgba(0,0,0,0.2); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: #fff; font-family: inherit; }
+.job-list { display: flex; flex-direction: column; gap: 10px; }
+.job-item { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1rem 1.25rem; display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+.job-item:hover { border-color: rgba(0,0,0,0.3); }
+.job-item.status-callback { border-left: 3px solid #0ea5e9; }
+.job-item.status-interview { border-left: 3px solid #8b5cf6; }
+.job-item.status-offer { border-left: 3px solid #16a34a; }
+.job-item.status-closed { opacity: 0.6; }
+.job-item-meta { font-size: 12px; color: #888; margin-top: 3px; }
+.job-item-title { font-size: 14px; font-weight: 500; }
+.job-item-scores { display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.badge { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge.fit { background: #eaf3de; color: #27500a; }
+.badge.likelihood { background: #e6f1fb; color: #0c447c; }
+.badge.harmonic { background: #f5f4f0; color: #444; border: 0.5px solid rgba(0,0,0,0.12); }
+.badge.db { background: #fcebeb; color: #a32d2d; }
+.badge.flag { background: #faeeda; color: #633806; }
+.badge.status-applied { background: #e0f2fe; color: #0369a1; }
+.badge.status-callback { background: #bae6fd; color: #0c4a6e; font-weight: 700; }
+.badge.status-interview { background: #ede9fe; color: #5b21b6; font-weight: 700; }
+.badge.status-offer { background: #dcfce7; color: #15803d; font-weight: 700; }
+.badge.status-closed { background: #f1f5f9; color: #64748b; }
+.badge.biz { background: #f8f4fe; color: #6b21a8; font-size: 10px; }
+.empty-state { text-align: center; padding: 4rem 2rem; color: #888; }
+.empty-state p { font-size: 14px; margin-top: 8px; }
+.subsection-title { font-size: 13px; font-weight: 500; margin-bottom: 10px; color: #444; }
+.resilience-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 4px; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
+.modal-overlay.visible { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; }
+.modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+.modal-meta { font-size: 12px; color: #888; margin-bottom: 12px; }
+.modal-score-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.modal-score-card { border-radius: 8px; padding: 10px; text-align: center; }
+.ms-label { font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 3px; }
+.ms-num { font-size: 26px; font-weight: 500; }
+.modal-alert { font-size: 12px; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; }
+.modal-alert.db { background: #fcebeb; color: #a32d2d; }
+.modal-alert.flag { background: #faeeda; color: #633806; }
+.modal-notes { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px; }
+.modal-gaps { font-size: 12px; color: #888; font-style: italic; margin-bottom: 4px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin-bottom: 12px; }
+.detail-row { font-size: 12px; padding: 4px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); display: flex; flex-direction: column; }
+.detail-row span { color: #888; font-size: 11px; }
+.filter-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); cursor: pointer; font-size: 13px; }
+.filter-row input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: #1a1a18; }
+.filter-label-sub { font-size: 11px; color: #888; display: block; margin-top: 2px; }
+.stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1rem; }
+.stat-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 8px; padding: 10px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 500; }
+.stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+@media (max-width: 600px) {
+  .field-row, .field-row.three, .score-display, .resilience-grid, .modal-score-row, .detail-grid, .stats-bar { grid-template-columns: 1fr; }
+  .page { padding: 1rem; }
+  .nav { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <span class="nav-title">Job Fit Calibrator</span>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPage('dashboard')">Dashboard</div>
+    <div class="nav-tab" onclick="showPage('add')">Score a job</div>
+  </div>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="stats-bar" id="stats-bar"></div>
+  <div class="filter-bar">
+    <label>Sort</label>
+    <select id="sort-select" onchange="renderDashboard()">
+      <option value="harmonic">Overall score</option>
+      <option value="fit">Fit score</option>
+      <option value="likelihood">Likelihood</option>
+      <option value="comp">Comp midpoint</option>
+      <option value="date">Date added</option>
+    </select>
+    <label>Status</label>
+    <select id="filter-status" onchange="renderDashboard()">
+      <option value="all">All</option>
+      <option value="applied">Applied</option>
+      <option value="callback">Callback</option>
+      <option value="interview">Interview</option>
+      <option value="offer">Offer</option>
+      <option value="watching">Watching</option>
+      <option value="closed">Closed</option>
+      <option value="pass">Pass</option>
+    </select>
+    <label>Biz model</label>
+    <select id="filter-biz" onchange="renderDashboard()">
+      <option value="all">All</option>
+      <option value="B2B SaaS">B2B SaaS</option>
+      <option value="Healthcare">Healthcare</option>
+      <option value="Marketplace">Marketplace</option>
+      <option value="Fintech">Fintech</option>
+      <option value="AI-Native">AI-Native</option>
+      <option value="Defense/Gov">Defense/Gov</option>
+      <option value="Industrial">Industrial</option>
+      <option value="Professional Services">Professional Services</option>
+    </select>
+    <button class="btn" onclick="exportJobs()">Export JSON</button>
+    <button class="btn" onclick="toggleImport()">Import JSON</button>
+  </div>
+  <div id="import-area" style="display:none; margin-bottom:1rem;">
+    <div class="card" style="margin-bottom:0;">
+      <div class="field">
+        <label>Paste JSON export here</label>
+        <textarea id="import-json" style="font-family:monospace; font-size:12px; min-height:80px;" placeholder='[{"id":...}]'></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="importJobs()">Import</button>
+        <button class="btn danger" onclick="clearAllJobs()">Clear all</button>
+      </div>
+    </div>
+  </div>
+  <div id="job-list" class="job-list"></div>
+</div>
+
+<!-- SCORE A JOB -->
+<div id="page-add" class="page">
+  <div class="section-label">Job details</div>
+  <div class="card">
+    <div class="field-row">
+      <div class="field"><label>Company</label><input type="text" id="f-company" placeholder="SpryPoint"></div>
+      <div class="field"><label>Role title</label><input type="text" id="f-title" placeholder="Director, Revenue Operations"></div>
+    </div>
+    <div class="field-row three">
+      <div class="field"><label>Comp floor ($K)</label><input type="number" id="f-comp-floor" placeholder="150" oninput="updateLiveScores()"></div>
+      <div class="field"><label>Comp ceiling ($K)</label><input type="number" id="f-comp-ceiling" placeholder="190" oninput="updateLiveScores()"></div>
+      <div class="field"><label>Your target ($K)</label><input type="number" id="f-comp-target" value="160" oninput="updateLiveScores()"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Work location</label>
+        <select id="f-location" onchange="updateLiveScores()">
+          <option value="">Select...</option>
+          <option value="fully-remote">Fully remote (all employees)</option>
+          <option value="remote-mixed">Remote but office-centric culture</option>
+          <option value="hybrid-atlanta">Hybrid, Atlanta proper</option>
+          <option value="inperson-atlanta">In-person, Atlanta proper</option>
+          <option value="hybrid-alpharetta">Hybrid, Alpharetta / exurbs</option>
+          <option value="inperson-alpharetta">In-person, Alpharetta / exurbs</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reporting structure</label>
+        <select id="f-reporting" onchange="updateLiveScores()">
+          <option value="">Select...</option>
+          <option value="coo-cfo">COO or CFO</option>
+          <option value="founder">Founder / CEO</option>
+          <option value="vp-revops">VP Revenue Operations</option>
+          <option value="chief-of-staff">Chief of Staff</option>
+          <option value="cro-strong">CRO, comp justifies it</option>
+          <option value="cro-weak">CRO, comp does not justify it</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Department scope</label>
+        <select id="f-scope" onchange="updateLiveScores()">
+          <option value="">Select...</option>
+          <option value="full-plus">Full GTM plus Finance / Data</option>
+          <option value="full-gtm">Full GTM (Sales, Marketing, CS)</option>
+          <option value="sales-marketing">Sales and Marketing</option>
+          <option value="sales-only">Sales only</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Direct reports</label>
+        <select id="f-reports" onchange="updateLiveScores()">
+          <option value="">Select...</option>
+          <option value="one-four">1 to 4 reports</option>
+          <option value="five-eight">5 to 8 reports</option>
+          <option value="nine-plus">9 or more reports</option>
+          <option value="ic">IC, no reports</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Business model</label>
+        <select id="f-bizmodel">
+          <option value="B2B SaaS">B2B SaaS</option>
+          <option value="Healthcare">Healthcare</option>
+          <option value="Marketplace">Marketplace</option>
+          <option value="Fintech">Fintech</option>
+          <option value="AI-Native">AI-Native</option>
+          <option value="Defense/Gov">Defense/Gov</option>
+          <option value="Industrial">Industrial</option>
+          <option value="Professional Services">Professional Services</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="watching">Watching</option>
+          <option value="applied">Applied</option>
+          <option value="callback">Callback received</option>
+          <option value="interview">In interviews</option>
+          <option value="offer">Offer stage</option>
+          <option value="closed">Closed / no longer active</option>
+          <option value="pass">Pass</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Job posted date</label><input type="date" id="f-posted"></div>
+      <div class="field"><label>Application date</label><input type="date" id="f-applied"></div>
+    </div>
+    <div class="field-row full">
+      <div class="field"><label>Known gaps</label><input type="text" id="f-gaps" placeholder="HubSpot depth, SQL fluency"></div>
+    </div>
+    <div class="field-row full">
+      <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Company context, hiring manager background, application strategy..."></textarea></div>
+    </div>
+  </div>
+
+  <div class="section-label">Hard filters (dealbreakers)</div>
+  <div class="card">
+    <label class="filter-row"><input type="checkbox" id="hf-alpharetta" onchange="updateLiveScores()"><div><span>Alpharetta / exurbs commute required</span><span class="filter-label-sub">Hybrid or in-person outside Atlanta proper</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="hf-contract" onchange="updateLiveScores()"><div><span>Contract role, not full-time</span><span class="filter-label-sub">W2 or 1099 contract with no FTE path</span></div></label>
+  </div>
+
+  <div class="section-label">Soft flags</div>
+  <div class="card">
+    <label class="filter-row"><input type="checkbox" id="sf-cro" onchange="updateLiveScores()"><div><span>Reporting to CRO without comp justification</span><span class="filter-label-sub">CRO reporting line where midpoint is below target -- minor negative, not a pass</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-years" onchange="updateLiveScores()"><div><span>Years of experience requirement exceeds background by 3+</span><span class="filter-label-sub">e.g. 12+ years required when you have 9 -- hurts likelihood, not a pass</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-hubspot" onchange="updateLiveScores()"><div><span>HubSpot expert level required</span><span class="filter-label-sub">Custom Objects, Operations Hub, Advanced Workflows -- not just familiarity</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-sql" onchange="updateLiveScores()"><div><span>SQL fluency required</span><span class="filter-label-sub">Independent query writing, not just BI tool familiarity</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-consulting" onchange="updateLiveScores()"><div><span>Consulting / banking background strongly preferred</span><span class="filter-label-sub">McKinsey, Bain, BCG, Goldman, JPM pipeline language</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-ic" onchange="updateLiveScores()"><div><span>IC role where profile reads Director-level</span><span class="filter-label-sub">Manager or Lead title, overqualified filter risk</span></div></label>
+    <label class="filter-row"><input type="checkbox" id="sf-inoffice" onchange="updateLiveScores()"><div><span>In-office 5 days / week</span><span class="filter-label-sub">Full in-office culture change from fully remote</span></div></label>
+  </div>
+
+  <div class="section-label">Experience fit</div>
+  <div class="card">
+    <p style="font-size:12px; color:#888; margin-bottom:14px;">Rate each dimension 1 (weak) to 5 (strong)</p>
+    <div class="subsection-title">Technical and functional</div>
+    <div class="score-row">
+      <div class="score-label">Stack overlap<span class="score-sub">Salesforce, Salesloft, Gong, HubSpot etc.</span></div>
+      <div class="score-slider"><input type="range" min="1" max="5" step="1" value="3" id="s-stack" oninput="syncVal(this,'sv-stack')"></div>
+      <div class="score-val" id="sv-stack">3</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">AE org scale match<span class="score-sub">50+ AEs at high ACV = hard; small team = easier</span></div>
+      <div class="score-slider"><input type="range" min="1" max="5" step="1" value="3" id="s-scale" oninput="syncVal(this,'sv-scale')"></div>
+      <div class="score-val" id="sv-scale">3</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Vertical familiarity<span class="score-sub">Healthcare, real estate, PLG SaaS score high</span></div>
+      <div class="score-slider"><input type="range" min="1" max="5" step="1" value="3" id="s-vertical" oninput="syncVal(this,'sv-vertical')"></div>
+      <div class="score-val" id="sv-vertical">3</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Builder vs optimizer fit<span class="score-sub">Builder = high; inherit and optimize = lower</span></div>
+      <div class="score-slider"><input type="range" min="1" max="5" step="1" value="3" id="s-builder" oninput="syncVal(this,'sv-builder')"></div>
+      <div class="score-val" id="sv-builder">3</div>
+    </div>
+    <hr class="divider">
+    <div class="subsection-title">Business model resilience</div>
+    <p style="font-size:12px; color:#888; margin-bottom:12px;">Three sub-scores average into one resilience dimension</p>
+    <div class="resilience-grid">
+      <div>
+        <div style="font-size:12px; color:#666; font-weight:500; margin-bottom:6px;">Moat strength</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="range" min="1" max="5" step="1" value="3" id="s-moat" style="flex:1; accent-color:#1a1a18;" oninput="syncVal(this,'sv-moat'); updateResilience()">
+          <span id="sv-moat" style="font-size:13px; font-weight:500; min-width:16px;">3</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; margin-top:4px;">Network effects, IP, switching cost</div>
+      </div>
+      <div>
+        <div style="font-size:12px; color:#666; font-weight:500; margin-bottom:6px;">AI displacement risk</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="range" min="1" max="5" step="1" value="3" id="s-ai" style="flex:1; accent-color:#1a1a18;" oninput="syncVal(this,'sv-ai'); updateResilience()">
+          <span id="sv-ai" style="font-size:13px; font-weight:500; min-width:16px;">3</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; margin-top:4px;">5 = AI native / immune, 1 = Claude plugin risk</div>
+      </div>
+      <div>
+        <div style="font-size:12px; color:#666; font-weight:500; margin-bottom:6px;">Scalability</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="range" min="1" max="5" step="1" value="3" id="s-scalability" style="flex:1; accent-color:#1a1a18;" oninput="syncVal(this,'sv-scalability'); updateResilience()">
+          <span id="sv-scalability" style="font-size:13px; font-weight:500; min-width:16px;">3</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; margin-top:4px;">Unit economics, market headroom</div>
+      </div>
+    </div>
+    <div style="font-size:12px; color:#666; margin-top:12px; padding-top:10px; border-top:0.5px solid rgba(0,0,0,0.08);">Resilience average: <strong id="resilience-avg">3.0</strong> / 5</div>
+  </div>
+
+  <div class="section-label">Live scores</div>
+  <div class="card">
+    <div id="db-banner" class="warning-banner dealbreaker"></div>
+    <div id="flag-banner" class="warning-banner softflag"></div>
+    <div class="score-display">
+      <div class="score-card fit-card">
+        <div class="sc-label">Fit score</div>
+        <div class="sc-num" id="live-fit">--</div>
+        <div class="sc-sub">Do I want this?</div>
+      </div>
+      <div class="score-card likelihood-card">
+        <div class="sc-label">Likelihood</div>
+        <div class="sc-num" id="live-likelihood">--</div>
+        <div class="sc-sub">Would they pick me?</div>
+      </div>
+      <div class="score-card harmonic-card">
+        <div class="sc-label">Overall</div>
+        <div class="sc-num" id="live-harmonic">--</div>
+        <div class="sc-sub">Harmonic mean</div>
+      </div>
+    </div>
+    <div class="verdict" id="live-verdict"></div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveJob()">Save job</button>
+      <button class="btn" onclick="clearForm()">Clear form</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div id="modal-alerts"></div>
+    <div class="modal-score-row" id="modal-scores"></div>
+    <div class="detail-grid" id="modal-details"></div>
+    <div class="modal-gaps" id="modal-gaps"></div>
+    <div class="modal-notes" id="modal-notes"></div>
+    <div class="btn-row">
+      <button class="btn danger" id="modal-delete-btn">Delete</button>
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'job-calibrator-v4';
+function getJobs() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; } }
+function saveJobs(jobs) { localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs)); }
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-tab')[name === 'dashboard' ? 0 : 1].classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+}
+
+function syncVal(el, outId) { document.getElementById(outId).textContent = el.value; updateLiveScores(); }
+function updateResilience() {
+  const m = +document.getElementById('s-moat').value;
+  const a = +document.getElementById('s-ai').value;
+  const s = +document.getElementById('s-scalability').value;
+  document.getElementById('resilience-avg').textContent = ((m+a+s)/3).toFixed(1);
+  updateLiveScores();
+}
+
+const locationScores = {'fully-remote':5,'hybrid-atlanta':3,'inperson-atlanta':2,'remote-mixed':2,'hybrid-alpharetta':1,'inperson-alpharetta':1};
+const locationBonus = {'fully-remote':1.0,'hybrid-atlanta':1.06,'inperson-atlanta':0.98,'remote-mixed':0.95,'hybrid-alpharetta':1.0,'inperson-alpharetta':1.0};
+const reportingScores = {'coo-cfo':5,'founder':4,'vp-revops':4,'chief-of-staff':4,'cro-strong':3,'cro-weak':1};
+const scopeScores = {'full-plus':5,'full-gtm':4,'sales-marketing':3,'sales-only':2};
+const reportsScores = {'one-four':5,'five-eight':3,'nine-plus':2,'ic':2};
+
+const locationLabels = {'fully-remote':'Fully remote','remote-mixed':'Remote, office-centric','hybrid-atlanta':'Hybrid, Atlanta','inperson-atlanta':'In-person, Atlanta','hybrid-alpharetta':'Hybrid, Alpharetta','inperson-alpharetta':'In-person, Alpharetta'};
+const reportingLabels = {'coo-cfo':'COO / CFO','founder':'Founder / CEO','vp-revops':'VP Revenue Operations','chief-of-staff':'Chief of Staff','cro-strong':'CRO (comp justified)','cro-weak':'CRO (comp not justified)'};
+const scopeLabels = {'full-plus':'Full GTM + Finance/Data','full-gtm':'Full GTM','sales-marketing':'Sales + Marketing','sales-only':'Sales only'};
+const reportsLabels = {'one-four':'1-4 direct reports','five-eight':'5-8 direct reports','nine-plus':'9+ direct reports','ic':'IC, no reports'};
+const hfLabels = {'hf-alpharetta':'Alpharetta commute','hf-contract':'Contract not FTE'};
+const statusLabels = {'watching':'Watching','applied':'Applied','callback':'Callback','interview':'Interview','offer':'Offer','closed':'Closed','pass':'Pass'};
+
+function getCompScore() {
+  const floor = +document.getElementById('f-comp-floor').value || 0;
+  const ceiling = +document.getElementById('f-comp-ceiling').value || 0;
+  const target = +document.getElementById('f-comp-target').value || 160;
+  if (!floor || !ceiling) return {score:3, mid:null};
+  const mid = (floor + ceiling) / 2;
+  const ratio = mid / target;
+  let score;
+  if (ratio >= 1.3) score = 5;
+  else if (ratio >= 1.1) score = 4;
+  else if (ratio >= 0.95) score = 3;
+  else if (ratio >= 0.80) score = 2;
+  else score = 1;
+  return {score, mid};
+}
+
+function getHardFilters() {
+  return ['hf-alpharetta','hf-contract'].filter(id => document.getElementById(id).checked);
+}
+
+function getSoftFlags() {
+  const flags = [];
+  if (document.getElementById('sf-cro').checked) flags.push('CRO reporting, comp not justified');
+  if (document.getElementById('sf-years').checked) flags.push('Experience gap 3+ years');
+  if (document.getElementById('sf-hubspot').checked) flags.push('HubSpot expert required');
+  if (document.getElementById('sf-sql').checked) flags.push('SQL fluency required');
+  if (document.getElementById('sf-consulting').checked) flags.push('Consulting/banking preferred');
+  if (document.getElementById('sf-ic').checked) flags.push('IC role, overqualified risk');
+  if (document.getElementById('sf-inoffice').checked) flags.push('Full in-office culture change');
+  return flags;
+}
+
+function calcScores() {
+  const comp = getCompScore();
+  const locKey = document.getElementById('f-location').value;
+  const loc = locationScores[locKey] || 3;
+  const locMult = locationBonus[locKey] || 1.0;
+  const rep = reportingScores[document.getElementById('f-reporting').value] || 3;
+  const scope = scopeScores[document.getElementById('f-scope').value] || 3;
+  const reports = reportsScores[document.getElementById('f-reports').value] || 3;
+  const stack = +document.getElementById('s-stack').value;
+  const scale = +document.getElementById('s-scale').value;
+  const vertical = +document.getElementById('s-vertical').value;
+  const builder = +document.getElementById('s-builder').value;
+  const moat = +document.getElementById('s-moat').value;
+  const ai = +document.getElementById('s-ai').value;
+  const scalability = +document.getElementById('s-scalability').value;
+  const resilience = (moat + ai + scalability) / 3;
+
+  // Soft flag penalties on likelihood
+  const croPenalty = document.getElementById('sf-cro').checked ? 0.85 : 1.0;
+  const yearsPenalty = document.getElementById('sf-years').checked ? 0.88 : 1.0;
+  const hubspotPenalty = document.getElementById('sf-hubspot').checked ? 0.72 : 1.0;
+  const sqlPenalty = document.getElementById('sf-sql').checked ? 0.90 : 1.0;
+  const consultingPenalty = document.getElementById('sf-consulting').checked ? 0.85 : 1.0;
+  const icPenalty = document.getElementById('sf-ic').checked ? 0.82 : 1.0;
+  const inOfficePenalty = document.getElementById('sf-inoffice').checked ? 0.92 : 1.0;
+  const softMult = croPenalty * yearsPenalty * hubspotPenalty * sqlPenalty * consultingPenalty * icPenalty * inOfficePenalty;
+
+  const fitRaw = comp.score*0.20 + loc*0.14 + rep*0.12 + scope*0.10 + reports*0.08 + resilience*0.18 + builder*0.11 + vertical*0.07;
+  const likelyRaw = (comp.score*0.10 + loc*0.04 + rep*0.08 + scope*0.10 + reports*0.04 + stack*0.22 + scale*0.18 + vertical*0.14 + builder*0.10) * locMult * softMult;
+
+  return {
+    fit: Math.round((fitRaw/5)*100),
+    likelihood: Math.min(100, Math.round((likelyRaw/5)*100)),
+    comp
+  };
+}
+
+function harmonicMean(a, b) {
+  if (!a || !b) return 0;
+  return Math.round(2*a*b/(a+b));
+}
+
+function updateLiveScores() {
+  const hf = getHardFilters();
+  const sf = getSoftFlags();
+  const dbBanner = document.getElementById('db-banner');
+  const flagBanner = document.getElementById('flag-banner');
+  if (hf.length) { dbBanner.classList.add('visible'); dbBanner.textContent = 'Dealbreaker: ' + hf.map(id => hfLabels[id]).join('; '); }
+  else dbBanner.classList.remove('visible');
+  if (sf.length) { flagBanner.classList.add('visible'); flagBanner.textContent = 'Flag: ' + sf.join('; '); }
+  else flagBanner.classList.remove('visible');
+
+  const {fit, likelihood} = calcScores();
+  const adjL = hf.length ? Math.min(likelihood, 20) : likelihood;
+  const hm = harmonicMean(fit, adjL);
+  document.getElementById('live-fit').textContent = fit;
+  document.getElementById('live-likelihood').textContent = adjL;
+  document.getElementById('live-harmonic').textContent = hm;
+
+  const status = document.getElementById('f-status').value;
+  const verdict = document.getElementById('live-verdict');
+  if (status === 'callback' || status === 'interview' || status === 'offer') {
+    verdict.className = 'verdict callback'; verdict.textContent = 'Active -- ' + statusLabels[status] + ' stage.';
+  } else if (status === 'pass' || hf.length) {
+    verdict.className = 'verdict pass'; verdict.textContent = hf.length ? 'Pass. Dealbreaker present.' : 'Pass. Manual override.';
+  } else if (hm >= 68) {
+    verdict.className = 'verdict apply'; verdict.textContent = 'Apply. Strong fit on both dimensions.';
+  } else if (hm >= 48) {
+    verdict.className = 'verdict consider'; verdict.textContent = 'Consider. Worth applying with eyes open.';
+  } else {
+    verdict.className = 'verdict pass'; verdict.textContent = 'Pass. Gap is too wide.';
+  }
+}
+
+function saveJob() {
+  const company = document.getElementById('f-company').value.trim();
+  const title = document.getElementById('f-title').value.trim();
+  if (!company || !title) { alert('Please enter company and role title.'); return; }
+  const hf = getHardFilters();
+  const sf = getSoftFlags();
+  const {fit, likelihood, comp} = calcScores();
+  const adjL = hf.length ? Math.min(likelihood, 20) : likelihood;
+  const hm = harmonicMean(fit, adjL);
+  const status = document.getElementById('f-status').value;
+  let tier;
+  if (status === 'callback' || status === 'interview' || status === 'offer') tier = status;
+  else if (status === 'pass' || hf.length) tier = 'pass';
+  else tier = hm >= 68 ? 'apply' : hm >= 48 ? 'consider' : 'pass';
+
+  const job = {
+    id: Date.now(), company, title,
+    compFloor: +document.getElementById('f-comp-floor').value || null,
+    compCeiling: +document.getElementById('f-comp-ceiling').value || null,
+    compMid: comp.mid,
+    status, bizModel: document.getElementById('f-bizmodel').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    gaps: document.getElementById('f-gaps').value.trim(),
+    posted: document.getElementById('f-posted').value || null,
+    applied: document.getElementById('f-applied').value || null,
+    fit, likelihood: adjL, harmonic: hm, tier,
+    dealbreakers: hf.map(id => hfLabels[id]),
+    softFlags: sf,
+    date: new Date().toISOString(),
+    selections: {
+      location: document.getElementById('f-location').value,
+      reporting: document.getElementById('f-reporting').value,
+      scope: document.getElementById('f-scope').value,
+      reports: document.getElementById('f-reports').value,
+    },
+    scores: {
+      stack: +document.getElementById('s-stack').value,
+      scale: +document.getElementById('s-scale').value,
+      vertical: +document.getElementById('s-vertical').value,
+      builder: +document.getElementById('s-builder').value,
+      moat: +document.getElementById('s-moat').value,
+      ai: +document.getElementById('s-ai').value,
+      scalability: +document.getElementById('s-scalability').value,
+    }
+  };
+  const jobs = getJobs(); jobs.unshift(job); saveJobs(jobs);
+  clearForm(); showPage('dashboard');
+}
+
+function clearForm() {
+  ['f-company','f-title','f-notes','f-gaps','f-posted','f-applied'].forEach(id => document.getElementById(id).value = '');
+  ['f-comp-floor','f-comp-ceiling'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-comp-target').value = 160;
+  ['f-location','f-reporting','f-scope','f-reports'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-status').value = 'watching';
+  document.getElementById('f-bizmodel').value = 'B2B SaaS';
+  ['hf-alpharetta','hf-contract','sf-cro','sf-years','sf-hubspot','sf-sql','sf-consulting','sf-ic','sf-inoffice'].forEach(id => document.getElementById(id).checked = false);
+  ['s-stack','s-scale','s-vertical','s-builder','s-moat','s-ai','s-scalability'].forEach(id => document.getElementById(id).value = 3);
+  ['sv-stack','sv-scale','sv-vertical','sv-builder','sv-moat','sv-ai','sv-scalability'].forEach(id => document.getElementById(id).textContent = 3);
+  document.getElementById('resilience-avg').textContent = '3.0';
+  updateLiveScores();
+}
+
+function calcScoresFromJob(job) {
+  const s = job.scores || {};
+  const sel = job.selections || {};
+  const sf = job.softFlags || [];
+
+  const floor = job.compFloor || 0;
+  const ceil = job.compCeiling || 0;
+  const target = 160;
+  let cs = 3;
+  if (floor && ceil) {
+    const mid = (floor + ceil) / 2;
+    const ratio = mid / target;
+    if (ratio >= 1.3) cs = 5;
+    else if (ratio >= 1.1) cs = 4;
+    else if (ratio >= 0.95) cs = 3;
+    else if (ratio >= 0.80) cs = 2;
+    else cs = 1;
+  }
+
+  const loc = locationScores[sel.location] || 3;
+  const locMult = locationBonus[sel.location] || 1.0;
+  const rep = reportingScores[sel.reporting] || 3;
+  const scope = scopeScores[sel.scope] || 3;
+  const reports = reportsScores[sel.reports] || 3;
+  const stack = s.stack || 3;
+  const scale = s.scale || 3;
+  const vertical = s.vertical || 3;
+  const builder = s.builder || 3;
+  const moat = s.moat || 3;
+  const ai = s.ai || 3;
+  const scalability = s.scalability || 3;
+  const resilience = (moat + ai + scalability) / 3;
+
+  const croPenalty = sf.includes('CRO reporting, comp not justified') ? 0.85 : 1.0;
+  const yearsPenalty = sf.includes('Experience gap 3+ years') ? 0.88 : 1.0;
+  const hubspotPenalty = sf.includes('HubSpot expert required') ? 0.72 : 1.0;
+  const sqlPenalty = sf.includes('SQL fluency required') ? 0.90 : 1.0;
+  const consultingPenalty = sf.includes('Consulting/banking preferred') ? 0.85 : 1.0;
+  const icPenalty = sf.includes('IC role, overqualified risk') ? 0.82 : 1.0;
+  const inOfficePenalty = sf.includes('Full in-office culture change') ? 0.92 : 1.0;
+  const softMult = croPenalty * yearsPenalty * hubspotPenalty * sqlPenalty * consultingPenalty * icPenalty * inOfficePenalty;
+
+  const fitRaw = cs*0.20 + loc*0.14 + rep*0.12 + scope*0.10 + reports*0.08 + resilience*0.18 + builder*0.11 + vertical*0.07;
+  const likelyRaw = (cs*0.10 + loc*0.04 + rep*0.08 + scope*0.10 + reports*0.04 + stack*0.22 + scale*0.18 + vertical*0.14 + builder*0.10) * locMult * softMult;
+
+  const fit = Math.round((fitRaw/5)*100);
+  const likelihood = Math.min(100, Math.round((likelyRaw/5)*100));
+
+  const db = job.dealbreakers || [];
+  const adjL = db.length ? Math.min(likelihood, 20) : likelihood;
+  const hm = harmonicMean(fit, adjL);
+
+  const status = job.status || 'watching';
+  let tier;
+  if (status === 'callback' || status === 'interview' || status === 'offer') tier = status;
+  else if (status === 'pass' || db.length) tier = 'pass';
+  else tier = hm >= 68 ? 'apply' : hm >= 48 ? 'consider' : 'pass';
+
+  return {fit, likelihood: adjL, harmonic: hm, tier};
+}
+
+function renderDashboard() {
+  const jobs = getJobs();
+  const sortBy = document.getElementById('sort-select').value;
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterBiz = document.getElementById('filter-biz').value;
+
+  let filtered = jobs.filter(j => {
+    if (filterStatus !== 'all' && j.status !== filterStatus) return false;
+    if (filterBiz !== 'all' && j.bizModel !== filterBiz) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortBy === 'fit') return b.fit - a.fit;
+    if (sortBy === 'likelihood') return b.likelihood - a.likelihood;
+    if (sortBy === 'comp') return (b.compMid || 0) - (a.compMid || 0);
+    if (sortBy === 'date') return new Date(b.date) - new Date(a.date);
+    return b.harmonic - a.harmonic;
+  });
+
+  // Stats
+  const total = jobs.length;
+  const applied = jobs.filter(j => ['applied','callback','interview','offer'].includes(j.status)).length;
+  const callbacks = jobs.filter(j => ['callback','interview','offer'].includes(j.status)).length;
+  const watching = jobs.filter(j => j.status === 'watching').length;
+  const cbRate = applied > 0 ? Math.round((callbacks / applied) * 100) : 0;
+  document.getElementById('stats-bar').innerHTML =
+    `<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total tracked</div></div>` +
+    `<div class="stat-card"><div class="stat-num">${applied}</div><div class="stat-label">Applied</div></div>` +
+    `<div class="stat-card"><div class="stat-num">${callbacks}</div><div class="stat-label">Callbacks</div></div>` +
+    `<div class="stat-card"><div class="stat-num">${cbRate}%</div><div class="stat-label">Callback rate</div></div>` +
+    `<div class="stat-card"><div class="stat-num">${watching}</div><div class="stat-label">Watching</div></div>`;
+
+  const list = document.getElementById('job-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><div style="font-size:32px;">&#128196;</div><p>No jobs match the current filters.</p></div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(job => {
+    const compStr = job.compMid ? '$' + Math.round(job.compMid) + 'K mid' : 'comp TBD';
+    const dateStr = new Date(job.date).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    const dbBadge = job.dealbreakers && job.dealbreakers.length ? '<span class="badge db">&#9888;</span>' : '';
+    const flagBadge = !job.dealbreakers?.length && job.softFlags && job.softFlags.length ? '<span class="badge flag">&#9873;</span>' : '';
+    const statusCls = 'status-' + (job.status || 'watching');
+    const statusBadge = job.status && job.status !== 'watching' ? `<span class="badge ${statusCls}">${statusLabels[job.status] || job.status}</span>` : '';
+    const bizBadge = job.bizModel ? `<span class="badge biz">${job.bizModel}</span>` : '';
+    const notes = job.notes ? '<div class="job-item-meta" style="margin-top:4px;">' + job.notes.substring(0,80) + (job.notes.length > 80 ? '...' : '') + '</div>' : '';
+    return `<div class="job-item ${statusCls}" onclick="openJob(${job.id})">
+      <div>
+        <div class="job-item-title">${job.company} — ${job.title}</div>
+        <div class="job-item-meta">${compStr} · ${dateStr}</div>
+        ${notes}
+      </div>
+      <div class="job-item-scores">
+        ${dbBadge}${flagBadge}${statusBadge}${bizBadge}
+        <span class="badge fit">F ${job.fit}</span>
+        <span class="badge likelihood">L ${job.likelihood}</span>
+        <span class="badge harmonic">${job.harmonic}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openJob(id) {
+  const job = getJobs().find(j => j.id === id);
+  if (!job) return;
+  document.getElementById('modal-title').textContent = job.company + ' — ' + job.title;
+  const compStr = job.compFloor && job.compCeiling ? '$' + job.compFloor + 'K - $' + job.compCeiling + 'K' : 'Comp not listed';
+  const dateStr = new Date(job.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  document.getElementById('modal-meta').textContent = compStr + ' · Added ' + dateStr + (job.bizModel ? ' · ' + job.bizModel : '');
+  let alerts = '';
+  if (job.dealbreakers?.length) alerts += '<div class="modal-alert db">Dealbreaker: ' + job.dealbreakers.join(', ') + '</div>';
+  if (job.softFlags?.length) alerts += '<div class="modal-alert flag">Flag: ' + job.softFlags.join(', ') + '</div>';
+  document.getElementById('modal-alerts').innerHTML = alerts;
+  document.getElementById('modal-scores').innerHTML =
+    '<div class="modal-score-card fit-card"><div class="ms-label">Fit</div><div class="ms-num" style="color:#27500a;">' + job.fit + '</div></div>' +
+    '<div class="modal-score-card likelihood-card"><div class="ms-label">Likelihood</div><div class="ms-num" style="color:#0c447c;">' + job.likelihood + '</div></div>' +
+    '<div class="modal-score-card harmonic-card"><div class="ms-label">Overall</div><div class="ms-num" style="color:#1a1a18;">' + job.harmonic + '</div></div>';
+  const s = job.selections || {};
+  document.getElementById('modal-details').innerHTML =
+    '<div class="detail-row"><span>Status</span>' + (statusLabels[job.status] || 'Unknown') + '</div>' +
+    '<div class="detail-row"><span>Location</span>' + (locationLabels[s.location] || 'Not set') + '</div>' +
+    '<div class="detail-row"><span>Reporting</span>' + (reportingLabels[s.reporting] || 'Not set') + '</div>' +
+    '<div class="detail-row"><span>Scope</span>' + (scopeLabels[s.scope] || 'Not set') + '</div>' +
+    '<div class="detail-row"><span>Reports</span>' + (reportsLabels[s.reports] || 'Not set') + '</div>' +
+    '<div class="detail-row"><span>Posted</span>' + (job.posted || 'Not recorded') + '</div>' +
+    '<div class="detail-row"><span>Applied</span>' + (job.applied || 'Not recorded') + '</div>';
+  document.getElementById('modal-gaps').textContent = job.gaps ? 'Known gaps: ' + job.gaps : '';
+  document.getElementById('modal-notes').textContent = job.notes || '';
+  document.getElementById('modal-delete-btn').onclick = () => deleteJob(id);
+  document.getElementById('modal-overlay').classList.add('visible');
+}
+
+function deleteJob(id) { saveJobs(getJobs().filter(j => j.id !== id)); closeModal(); renderDashboard(); }
+function closeModal(e) { if (!e || e.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('visible'); }
+function toggleImport() { const a = document.getElementById('import-area'); a.style.display = a.style.display === 'none' ? 'block' : 'none'; }
+
+function exportJobs() {
+  const blob = new Blob([JSON.stringify(getJobs(), null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'job-calibrator-export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJobs() {
+  const raw = document.getElementById('import-json').value.trim();
+  try {
+    const incoming = JSON.parse(raw);
+    if (!Array.isArray(incoming)) throw new Error('Expected array');
+    const existing = getJobs();
+    const existingIds = new Set(existing.map(j => j.id));
+    const merged = [...existing, ...incoming.filter(j => !existingIds.has(j.id)).map(j => {
+      const r = calcScoresFromJob(j);
+      return {...j, fit: r.fit, likelihood: r.likelihood, harmonic: r.harmonic, tier: r.tier};
+    })];
+    saveJobs(merged);
+    document.getElementById('import-json').value = '';
+    document.getElementById('import-area').style.display = 'none';
+    renderDashboard();
+    alert('Imported ' + incoming.length + ' jobs.');
+  } catch(e) { alert('Invalid JSON: ' + e.message); }
+}
+
+function clearAllJobs() {
+  if (confirm('Delete all saved jobs? This cannot be undone.')) { saveJobs([]); renderDashboard(); }
+}
+
+// Seed all 52 jobs
+(function() {
+  const SEED = [{"id": 1746000001, "company": "LocalStack", "title": "Director, Revenue Operations", "compFloor": 132, "compCeiling": 196, "compMid": 164, "status": "watching", "bizModel": "B2B SaaS", "notes": "Series A, $25M raised. HubSpot native not Salesforce. Cloud dev tooling, AI-native infrastructure play. 3-4 FTE team to lead. Builder mandate explicit. Cover letter drafted.", "gaps": "HubSpot depth", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 5, "moat": 4, "ai": 5, "scalability": 4}, "date": "2026-05-06T12:00:01Z", "fit": 85, "likelihood": 72, "harmonic": 78, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000002, "company": "Hightouch", "title": "Revenue Operations Leader", "compFloor": 240, "compCeiling": 325, "compMid": 282, "status": "watching", "bizModel": "B2B SaaS", "notes": "Was an early Hightouch customer at Helium 10. PLG + enterprise motion. 50+ AEs at $100K+ ACV is honest gap. Reports to CFO and CRO jointly. Dream job, one role away. Cover letter drafted.", "gaps": "AE org scale at high ACV, enterprise motion experience", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 2, "vertical": 3, "builder": 5, "moat": 5, "ai": 5, "scalability": 5}, "date": "2026-05-06T12:00:02Z", "fit": 97, "likelihood": 79, "harmonic": 87, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000003, "company": "Bluehost", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "Comp not listed. Web hosting, commoditized market, AI displacement risk high. CRO-weak as conservative default. Resilience is weak link.", "gaps": "Commoditized vertical, AI displacement risk", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 2, "builder": 4, "moat": 2, "ai": 2, "scalability": 2}, "date": "2026-05-06T12:00:03Z", "fit": 63, "likelihood": 56, "harmonic": 59, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000004, "company": "OpenLoop Health", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "Healthcare", "notes": "APPLIED. Series A telehealth infrastructure. Salesforce migration to own. Strong healthcare vertical via Waystar and HHAeXchange. Jan 2026 data breach with active class action -- go in eyes open. Reports to VP RevOps.", "gaps": "Jan 2026 data breach, active class action litigation", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 5, "scale": 3, "vertical": 5, "builder": 5, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:04Z", "fit": 86, "likelihood": 87, "harmonic": 86, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000005, "company": "Honeywell HBS", "title": "Sales Excellence Manager", "compFloor": 150, "compCeiling": 170, "compMid": 160, "status": "pass", "bizModel": "Industrial", "notes": "Returned to prior employer. Optimizer not builder role. Analytics pigeonhole risk documented. Four managers in one year. Ran this experiment once.", "gaps": "Optimizer role, wrong motion, prior pigeonhole risk", "selections": {"location": "hybrid-atlanta", "reporting": "chief-of-staff", "scope": "sales-only", "reports": "one-four"}, "scores": {"stack": 5, "scale": 5, "vertical": 5, "builder": 2, "moat": 4, "ai": 4, "scalability": 3}, "date": "2026-05-06T12:00:05Z", "fit": 67, "likelihood": 86, "harmonic": 75, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000006, "company": "Verkada", "title": "Division Lead, Sales Strategy and Operations", "compFloor": 125, "compCeiling": 200, "compMid": 162, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. 5 days/week in-office Atlanta midtown -- Midtown manageable from Decatur. IC role but mentorship angle and career growth structure appealing. LinkedIn flagged as top Atlanta company for career growth. Physical security AI, $2B+ valuation.", "gaps": "In-office 5 days, IC not Director, comp floor low", "selections": {"location": "inperson-atlanta", "reporting": "vp-revops", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 3, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:06Z", "fit": 58, "likelihood": 58, "harmonic": 58, "tier": "consider", "softFlags": [], "dealbreakers": []}, {"id": 1746000007, "company": "WebPT", "title": "Director, Revenue Operations", "compFloor": 120, "compCeiling": 150, "compMid": 135, "status": "pass", "bizModel": "Healthcare", "notes": "Rehab therapy SaaS, healthcare adjacent. Comp $120-150K explicitly low. Best tech stack overlap: SFDC, Gong, HubSpot, Gainsight. Reports to Chief Customer Officer.", "gaps": "Comp ceiling below target, Gainsight depth", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 5, "scale": 3, "vertical": 4, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-06T12:00:07Z", "fit": 77, "likelihood": 82, "harmonic": 79, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000008, "company": "Senzing", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "AI-Native", "notes": "APPLIED. Agentic entity resolution -- fraud detection, customer 360, national security use cases. Reports jointly to President and CCO. AI-native positioning, strong moat via national security switching cost. Builder mandate clearest in tracker.", "gaps": "Data/analytics vertical unfamiliar", "selections": {"location": "fully-remote", "reporting": "founder", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 5, "scale": 3, "vertical": 3, "builder": 5, "moat": 5, "ai": 5, "scalability": 4}, "date": "2026-05-06T12:00:08Z", "fit": 86, "likelihood": 82, "harmonic": 84, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000009, "company": "HavocAI", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "watching", "bizModel": "Defense/Gov", "notes": "Autonomous surface vessels for defense and maritime. $100M raised in under 2 years, CIA In-Q-Tel and Lockheed Martin investors. Marketo preferred -- gap. Government procurement sales cycle unfamiliar. Moat among highest in tracker.", "gaps": "Marketo gap, government procurement motion, defense vertical", "selections": {"location": "fully-remote", "reporting": "founder", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 5, "moat": 5, "ai": 5, "scalability": 4}, "date": "2026-05-06T12:00:09Z", "fit": 84, "likelihood": 70, "harmonic": 76, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000010, "company": "Intuit", "title": "Director, Sales Operations (Mid-Market)", "compFloor": 190, "compCeiling": 240, "compMid": 215, "status": "watching", "bizModel": "B2B SaaS", "notes": "$180B company, mid-market segment for QuickBooks/TurboTax. Comp estimated $190-240K. Scope is sales-only mid-market, not full GTM. Matrixed optimizer culture. Honeywell 2500-seller credential is best fit signal.", "gaps": "Sales-only scope, matrixed optimizer culture, Anaplan gap", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "sales-only", "reports": "five-eight"}, "scores": {"stack": 4, "scale": 4, "vertical": 3, "builder": 3, "moat": 5, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:10Z", "fit": 79, "likelihood": 73, "harmonic": 76, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000011, "company": "Tithely", "title": "Director, Revenue Operations", "compFloor": 160, "compCeiling": 180, "compMid": 170, "status": "pass", "bizModel": "B2B SaaS", "notes": "Church management and giving SaaS. $160-180K comp at target. Reports to CGO. Full GTM scope. HubSpot preferred. Mission alignment question: product is explicitly faith-based. Candidate is an atheist Jew.", "gaps": "Faith-based mission alignment, HubSpot depth", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 2, "vertical": 1, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-06T12:00:11Z", "fit": 77, "likelihood": 68, "harmonic": 72, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000012, "company": "K1x", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "watching", "bizModel": "Fintech", "notes": "Tax software SaaS, Series C. K-1 partnership tax document automation -- adjacent to InvestNext real estate fund admin world. HubSpot native. No comp listed.", "gaps": "HubSpot depth, no comp listed, may be scoped below Director", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 2, "vertical": 3, "builder": 5, "moat": 3, "ai": 4, "scalability": 3}, "date": "2026-05-06T12:00:12Z", "fit": 81, "likelihood": 74, "harmonic": 77, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000013, "company": "ACI Learning", "title": "Director, Revenue Operations", "compFloor": 145, "compCeiling": 160, "compMid": 152, "status": "pass", "bizModel": "B2B SaaS", "notes": "Audit, cybersecurity and IT training SaaS. Reports to CMO with dotted line CRO. Comp ceiling $160K is your floor, zero negotiating room. Salesforce Admin cert preferred -- you have it.", "gaps": "CMO reporting unusual, comp ceiling is floor", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 5, "scale": 3, "vertical": 2, "builder": 5, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-06T12:00:13Z", "fit": 69, "likelihood": 61, "harmonic": 65, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000014, "company": "Integra Connect", "title": "Sr. Manager, Sales Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Professional Services", "notes": "PASS. Sr. Manager title. SOW and contract administration focus. Health IT services not SaaS product. Bell curve completeness.", "gaps": "Wrong title, wrong motion, travel requirement", "selections": {"location": "remote-mixed", "reporting": "cro-weak", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 3, "scale": 2, "vertical": 4, "builder": 2, "moat": 2, "ai": 2, "scalability": 2}, "date": "2026-05-06T12:00:14Z", "fit": 44, "likelihood": 41, "harmonic": 42, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000015, "company": "Ping Identity", "title": "Director, Sales Operations (Americas)", "compFloor": 170, "compCeiling": 220, "compMid": 195, "status": "closed", "bizModel": "B2B SaaS", "notes": "PE-backed (Thoma Bravo) enterprise identity and access management. $170-220K. Reports to VP Global Sales Ops. Honeywell is credential for 10+ years requirement. MEDDPPICC -- built PICBANTY AI automation, good talking point. Role closed before application.", "gaps": "Anaplan gap, Americas-only scope, role closed", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "sales-only", "reports": "one-four"}, "scores": {"stack": 4, "scale": 4, "vertical": 2, "builder": 3, "moat": 5, "ai": 4, "scalability": 3}, "date": "2026-05-06T12:00:15Z", "fit": 75, "likelihood": 70, "harmonic": 72, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000016, "company": "Lennox / Heatcraft", "title": "Director, Revenue Operations", "compFloor": 165, "compCeiling": 217, "compMid": 191, "status": "pass", "bizModel": "Industrial", "notes": "Industrial manufacturing, not SaaS. Commercial refrigeration. Comp $165-217K plus bonus is excellent. Motion entirely different from B2B SaaS: CRM-ERP, CPQ, distributor channel management. Honeywell is closest analog but analyst-era not leadership-era.", "gaps": "Industrial manufacturing motion, CRM-ERP/CPQ, distributor channel", "selections": {"location": "hybrid-atlanta", "reporting": "vp-revops", "scope": "full-plus", "reports": "five-eight"}, "scores": {"stack": 2, "scale": 4, "vertical": 2, "builder": 3, "moat": 5, "ai": 3, "scalability": 4}, "date": "2026-05-06T12:00:16Z", "fit": 73, "likelihood": 68, "harmonic": 70, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000017, "company": "Semrush", "title": "Director, Customer Success Operations", "compFloor": 120, "compCeiling": 150, "compMid": 135, "status": "pass", "bizModel": "B2B SaaS", "notes": "$470M ARR public company. SEO and digital marketing platform. CS Ops only, not full RevOps. Gainsight/Totango preferred -- gap. 5-7 years requirement suggests overqualified. Comp $120-150K below target.", "gaps": "CS Ops only, Gainsight gap, comp below target", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 4, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:17Z", "fit": 74, "likelihood": 68, "harmonic": 71, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000018, "company": "SpryPoint", "title": "Director, GTM Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Utility software, meter-to-cash SaaS. 300 employees, Norwest and Insight Partners backed. Atlanta hub office. Reports to VP RevOps -- Shawn Basak, MIT Sloan. Salesforce Admin cert directly relevant -- reduce VTG external dependency. Submitted $160-180K range.", "gaps": "Utility vertical unfamiliar, HubSpot marketing ops depth", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 5, "scale": 3, "vertical": 2, "builder": 5, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:18Z", "fit": 82, "likelihood": 79, "harmonic": 80, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000019, "company": "Athennian", "title": "Director, Revenue Operations", "compFloor": 150, "compCeiling": 210, "compMid": 180, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Legal entity management SaaS. Canadian company, US remote. $150-210K USD. Adjacent to InvestNext -- real estate fund managers deal with complex entity hierarchies. HubSpot strongly preferred. One RevOps Analyst direct report.", "gaps": "HubSpot depth, strategic oversight role not hands-on builder", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 3, "builder": 3, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:19Z", "fit": 85, "likelihood": 77, "harmonic": 81, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000020, "company": "Harver", "title": "Director, GTM Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "Pre-employment assessment SaaS. Last funding 2019, $27.3M total -- no new capital in 6 years. HubSpot confirmed. Full GTM scope. Builder mandate explicit. No comp listed. HR tech vertical unfamiliar. Lower priority.", "gaps": "No new funding in 6 years, HubSpot depth, HR tech vertical", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 2, "builder": 5, "moat": 2, "ai": 3, "scalability": 3}, "date": "2026-05-06T12:00:20Z", "fit": 79, "likelihood": 76, "harmonic": 77, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000021, "company": "Tebra", "title": "Director, GTM Technology", "compFloor": 200, "compCeiling": 228, "compMid": 214, "status": "watching", "bizModel": "Healthcare", "notes": "EHR plus practice management SaaS. 42000 practices, Kareo plus PatientPop merger. Comp $200-228K. Healthcare vertical credential. Late-stage candidate for Sr Manager RevOps role on same team last year. VP is semi-famous Marketo power user -- Marketo depth gap politically sensitive.", "gaps": "Marketo depth gap, prior late-stage candidacy may cut both ways", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "five-eight"}, "scores": {"stack": 3, "scale": 4, "vertical": 4, "builder": 5, "moat": 4, "ai": 5, "scalability": 3}, "date": "2026-05-06T12:00:21Z", "fit": 89, "likelihood": 82, "harmonic": 85, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000022, "company": "Hopper", "title": "Revenue Operations Manager", "compFloor": 180, "compCeiling": 250, "compMid": 215, "status": "pass", "bizModel": "Marketplace", "notes": "Consumer travel fintech, #3 OTA in North America. $750M raised. Manager title not Director. Comp $180-250K exceptional for the level. GTM engineering and data infrastructure heavy -- Collective parallel. Montreal HQ, west coast engineering culture.", "gaps": "Manager title, SQL/data infrastructure depth, travel vertical", "selections": {"location": "fully-remote", "reporting": "chief-of-staff", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 3, "scale": 4, "vertical": 1, "builder": 5, "moat": 4, "ai": 5, "scalability": 5}, "date": "2026-05-06T12:00:22Z", "fit": 80, "likelihood": 66, "harmonic": 72, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000023, "company": "Casepoint", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Defense/Gov", "notes": "eDiscovery and legal compliance SaaS. Acquired by Thoma Bravo Jan 2025, merged with OPEXUS. CRO reporting with no comp listed. Globally distributed US and India team. Legal tech and government compliance vertical entirely outside background.", "gaps": "CRO reporting, legal tech vertical, offshore team management", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-plus", "reports": "five-eight"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 4, "moat": 4, "ai": 4, "scalability": 3}, "date": "2026-05-06T12:00:23Z", "fit": 68, "likelihood": 55, "harmonic": 61, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000024, "company": "Schellman", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Professional Services", "notes": "BELL CURVE ANCHOR. Cybersecurity and IT audit attestation firm. Professional services not SaaS. Project-based revenue. Wrong motion, wrong vertical, wrong stack.", "gaps": "Professional services motion, wrong stack, wrong vertical", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 2, "scale": 2, "vertical": 2, "builder": 2, "moat": 3, "ai": 3, "scalability": 2}, "date": "2026-05-06T12:00:24Z", "fit": 63, "likelihood": 44, "harmonic": 52, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000025, "company": "OpenAI", "title": "AI Workflow & Operations Engineer (GTM)", "compFloor": 239, "compCeiling": 265, "compMid": 252, "status": "pass", "bizModel": "AI-Native", "notes": "Ironic entry. Highest comp in tracker. GTM workflow engineer not RevOps Director -- senior IC builder role. Build agentic workflows using OpenAI APIs. Career trajectory question: lateral from leadership path toward deep GTM engineering.", "gaps": "IC not Director, independent coding depth vs Claude-assisted", "selections": {"location": "fully-remote", "reporting": "chief-of-staff", "scope": "full-plus", "reports": "ic"}, "scores": {"stack": 4, "scale": 4, "vertical": 3, "builder": 5, "moat": 5, "ai": 5, "scalability": 5}, "date": "2026-05-06T12:00:25Z", "fit": 90, "likelihood": 82, "harmonic": 86, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000026, "company": "Hiive", "title": "Director, Head of Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Fintech", "notes": "Pre-IPO secondary market platform. Vancouver HQ, NOT truly remote -- culture center of gravity clearly in Vancouver. Private capital markets vertical intellectually adjacent to thesis. Reposted, 100+ applicants.", "gaps": "Vancouver-centric culture despite remote label, no comp listed", "selections": {"location": "remote-mixed", "reporting": "founder", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 3, "builder": 5, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:26Z", "fit": 75, "likelihood": 71, "harmonic": 73, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000027, "company": "Quince", "title": "Sr. Manager, B2B Revenue Operations", "compFloor": 160, "compCeiling": 215, "compMid": 187, "status": "pass", "bizModel": "B2B SaaS", "notes": "BELL CURVE. DTC retail. Senior Manager not Director. HubSpot expert required -- genuine credential gap. DTC retail vertical outside background. Erin endorsed the product (blanket).", "gaps": "HubSpot expert level required, Senior Manager not Director, DTC retail vertical", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 2, "scale": 3, "vertical": 1, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-06T12:00:27Z", "fit": 61, "likelihood": 42, "harmonic": 50, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000028, "company": "Eve", "title": "GTM Systems Lead", "compFloor": 140, "compCeiling": 160, "compMid": 150, "status": "pass", "bizModel": "AI-Native", "notes": "AI-native legal tech for plaintiff law firms. A16z, Spark Capital backed. 2x QoQ revenue growth. GTM Systems IC role not RevOps Director. Expert HubSpot, Clay, n8n, Orum, Vitally required. Comp mismatched for 10+ years required.", "gaps": "IC not Director, expert HubSpot/Clay/n8n required, comp below target", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 2, "scale": 3, "vertical": 2, "builder": 5, "moat": 4, "ai": 5, "scalability": 4}, "date": "2026-05-06T12:00:28Z", "fit": 61, "likelihood": 43, "harmonic": 50, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000029, "company": "TrueCar", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Marketplace", "notes": "PASS. Car buying marketplace. Automotive industry knowledge listed as core qualification -- disqualifying vertical gap.", "gaps": "Automotive vertical required and disqualifying", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 1, "builder": 3, "moat": 2, "ai": 2, "scalability": 2}, "date": "2026-05-06T12:00:29Z", "fit": 60, "likelihood": 48, "harmonic": 53, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000030, "company": "ScaleOps", "title": "RevOps Lead", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "POSTERITY. Probably closed. Real-time cloud resource management, Kubernetes optimization. B2D motion -- selling to DevOps teams, unfamiliar buyer persona. RevOps Lead not Director.", "gaps": "B2D motion unfamiliar, Lead not Director, probably closed", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 3, "scale": 2, "vertical": 2, "builder": 4, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-06T12:00:30Z", "fit": 69, "likelihood": 56, "harmonic": 62, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000031, "company": "Swisslog", "title": "Revenue Operations (Manager/Director)", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "Industrial", "notes": "STALE/PASS. Two months old, probably closed. Warehouse robotics, KUKA subsidiary. Industrial capital equipment sales motion not SaaS. Wrong motion, wrong vertical.", "gaps": "Industrial capital equipment motion, stale posting, wrong vertical", "selections": {"location": "remote-mixed", "reporting": "cro-weak", "scope": "sales-marketing", "reports": "ic"}, "scores": {"stack": 2, "scale": 2, "vertical": 1, "builder": 2, "moat": 3, "ai": 2, "scalability": 3}, "date": "2026-05-06T12:00:31Z", "fit": 45, "likelihood": 32, "harmonic": 37, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000032, "company": "ServiceTitan", "title": "Revenue Operations Manager", "compFloor": 137, "compCeiling": 184, "compMid": 160, "status": "watching", "bizModel": "B2B SaaS", "notes": "Field service management SaaS. Recently IPO late 2024. Manager title IC role. Consulting-flavored strategic project work. No direct reports. Midpoint $160K at target but lateral in scope. Benefits package genuinely exceptional.", "gaps": "Manager IC role, consulting-flavored project work, no direct reports", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "sales-only", "reports": "ic"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 3, "moat": 4, "ai": 3, "scalability": 4}, "date": "2026-05-06T12:00:32Z", "fit": 65, "likelihood": 61, "harmonic": 63, "tier": "consider", "softFlags": [], "dealbreakers": []}, {"id": 1746000033, "company": "Rebrandly", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Branded link management SaaS. Profitable, Five Elms Capital PE backed. Remote-first since 2015. PLG/SLG hybrid motion -- Helium 10 credential. Salesforce and HubSpot both in stack plus Clay, Gong. Reports to Head of Sales -- suboptimal. No comp listed.", "gaps": "Head of Sales reporting suboptimal, no comp listed, HubSpot depth", "selections": {"location": "fully-remote", "reporting": "chief-of-staff", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 2, "builder": 4, "moat": 3, "ai": 4, "scalability": 3}, "date": "2026-05-06T12:00:33Z", "fit": 75, "likelihood": 70, "harmonic": 72, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000034, "company": "Abnormal AI", "title": "Sr. Manager, Renewal Operations", "compFloor": 133, "compCeiling": 175, "compMid": 154, "status": "pass", "bizModel": "B2B SaaS", "notes": "Email security AI. Sr Manager not Director. Renewal ops only not full GTM. Scope is subset of what is owned at InvestNext today. Midpoint $154K below target.", "gaps": "Sr Manager not Director, renewal ops only, Gainsight/Sigma gaps", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-gtm", "reports": "ic"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 4, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-07T12:00:34Z", "fit": 73, "likelihood": 64, "harmonic": 68, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000035, "company": "Paper", "title": "Director, Revenue Operations", "compFloor": 155, "compCeiling": 180, "compMid": 167, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS on stability grounds. EdTech tutoring SaaS. Third CEO in 18 months, cut 45% of HQ staff Aug 2024. Business model built on pandemic-era federal funding drying up. Reposted -- probably just algorithm gaming.", "gaps": "Pandemic funding cliff, leadership instability, structural revenue risk", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "ic"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 5, "moat": 2, "ai": 4, "scalability": 2}, "date": "2026-05-07T12:00:35Z", "fit": 63, "likelihood": 52, "harmonic": 57, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000036, "company": "SMA Technologies", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS / OUTDATED. IT workload automation for credit unions and banks. Mid-rebrand to Continuous. Reports to CRO, no comp listed. Financial services niche vertical outside background.", "gaps": "CRO reporting, financial services niche vertical, Grow.com unfamiliar", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 3, "moat": 4, "ai": 3, "scalability": 3}, "date": "2026-05-07T12:00:36Z", "fit": 66, "likelihood": 50, "harmonic": 57, "tier": "pass", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000037, "company": "Fetch", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "Marketplace", "notes": "APPLIED. Receipt scanning consumer rewards app with B2B enterprise side selling to CPG brands. $500M revenue. Network effect moat. PE lifer hiring manager previously at RealPage -- direct InvestNext competitor, knows real estate tech GTM motion. Non-trivial candidate advantage. CRO reporting, no comp listed.", "gaps": "CRO reporting, no comp listed, CPG marketplace vertical unfamiliar", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 4, "vertical": 3, "builder": 4, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-07T12:00:37Z", "fit": 74, "likelihood": 59, "harmonic": 66, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000038, "company": "Pearl", "title": "Director, AI Operations (GTM)", "compFloor": 170, "compCeiling": 200, "compMid": 185, "status": "closed", "bizModel": "Healthcare", "notes": "CLOSED before interview. Dental AI, FDA-cleared computer vision. Healthcare vertical credential. Reports to COO Ben Plomion. AI-native mandate. HubSpot deep expertise required -- real gap. Position closed mid-process. Recruiter screen completed.", "gaps": "HubSpot deep expertise, position closed", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 4, "builder": 5, "moat": 4, "ai": 5, "scalability": 4}, "date": "2026-05-07T12:00:38Z", "fit": 92, "likelihood": 79, "harmonic": 85, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000039, "company": "Swimlane", "title": "Director, Revenue Operations", "compFloor": 160, "compCeiling": 180, "compMid": 170, "status": "closed", "bizModel": "B2B SaaS", "notes": "Security operations automation, agentic AI for SOC teams. $160-180K plus variable at target comp. Salesforce preferred. Full GTM scope. Warm outreach to Dorothy sent, no response. Did not advance.", "gaps": "Cybersecurity vertical, no warm intro response received", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 2, "builder": 4, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-11T12:00:39Z", "fit": 78, "likelihood": 70, "harmonic": 74, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000040, "company": "Acuvance (via Coker)", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "watching", "bizModel": "Professional Services", "notes": "Healthcare consulting firm, PE-backed rollup. Listed via Coker. CFO reporting -- excellent. Comp design and pricing governance central. Professional services not SaaS. Consulting vertical outside background.", "gaps": "Professional services motion, consulting vertical, no comp listed", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 2, "scale": 3, "vertical": 3, "builder": 4, "moat": 3, "ai": 2, "scalability": 3}, "date": "2026-05-13T12:00:40Z", "fit": 79, "likelihood": 68, "harmonic": 73, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000041, "company": "Fleetio", "title": "Director, GTM Technology & Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "Fleet management SaaS. $450M Series D March 2025. 12-15+ years required -- 3-6 years over floor. Used product at Einride -- genuine customer familiarity. Previously applied, no callback. GTM PMO framing not builder mandate.", "gaps": "12-15 years required, PMO governance framing, prior non-callback", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "five-eight"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 3, "moat": 4, "ai": 3, "scalability": 4}, "date": "2026-05-13T12:00:41Z", "fit": 73, "likelihood": 68, "harmonic": 70, "tier": "pass", "softFlags": [], "dealbreakers": []}, {"id": 1746000042, "company": "Sparrow", "title": "Director, Revenue Operations", "compFloor": 132, "compCeiling": 220, "compMid": 176, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Employee leave management SaaS. Comp $165-275K OTE on 80/20 split. Stack is exact InvestNext match: Salesforce, Salesloft, Gong, LinkedIn Sales Navigator, Chili Piper. HR and People leader buyer persona adjacent to Waystar and HHAeXchange. Posting may be stale.", "gaps": "HR tech vertical, posting may be stale", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "ic"}, "scores": {"stack": 5, "scale": 3, "vertical": 3, "builder": 5, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-13T12:00:42Z", "fit": 70, "likelihood": 63, "harmonic": 66, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000043, "company": "Revinate", "title": "VP/Director, GTM Operations", "compFloor": 225, "compCeiling": 250, "compMid": 237, "status": "watching", "bizModel": "B2B SaaS", "notes": "Hotel direct booking platform, AI-powered CDP. $225-250K comp second highest in tracker. Atlanta area required -- Decatur is a direct advantage. 10+ years required, candidate at 9. Reports to CRO but comp justifies it. Gemini AI specified -- Google shop. 90-day engine transformation mandate.", "gaps": "10+ years required at 9, Gemini/Google stack, hospitality vertical", "selections": {"location": "hybrid-atlanta", "reporting": "cro-strong", "scope": "full-plus", "reports": "five-eight"}, "scores": {"stack": 3, "scale": 4, "vertical": 2, "builder": 5, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-13T12:00:43Z", "fit": 79, "likelihood": 77, "harmonic": 78, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000044, "company": "Roo", "title": "Director, Sales Operations", "compFloor": 145, "compCeiling": 185, "compMid": 165, "status": "applied", "bizModel": "Marketplace", "notes": "APPLIED. Veterinary staffing marketplace. 20000+ vet professionals, 9000+ animal hospitals. Atlanta Tier 4 comp $145-185K at target. Two-sided marketplace supply/demand motion interesting. HubSpot expert level gap. Mission is charming. Yam-adjacent industry.", "gaps": "HubSpot expert level, 10+ years required, 5 years managing teams", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 5, "moat": 3, "ai": 3, "scalability": 4}, "date": "2026-05-13T12:00:44Z", "fit": 70, "likelihood": 54, "harmonic": 61, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000045, "company": "Cognosos", "title": "Senior Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. AI-powered RTLS -- real-time asset location for healthcare, automotive logistics. Atlanta HQ, Riverwood Capital backed. Three acquisitions in under a year. CFO Carter Griffith directly named. Healthcare vertical -- Waystar and HHAeXchange credential. MEDDPPICC -- PICBANTY automation talking point. Hybrid Atlanta manageable.", "gaps": "IoT/RTLS vertical unfamiliar, post-acquisition integration complexity", "selections": {"location": "hybrid-atlanta", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 4, "vertical": 4, "builder": 5, "moat": 4, "ai": 4, "scalability": 4}, "date": "2026-05-13T12:00:45Z", "fit": 81, "likelihood": 84, "harmonic": 82, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000046, "company": "Invoca", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. AI conversation intelligence, call tracking and attribution. $100M ARR, 300 employees. VP RevOps reporting. Process and procedure design layer separated from systems team. Managing Marketing Ops and Sales Ops managers. Stack: Salesforce, Marketo, Gainsight, Gong, Salesloft. Hands-on AI fluency required -- Conversations pipeline and dedup agent are the answer.", "gaps": "Marketo and Gainsight depth gaps", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 4, "vertical": 3, "builder": 4, "moat": 4, "ai": 5, "scalability": 4}, "date": "2026-05-15T12:00:46Z", "fit": 82, "likelihood": 79, "harmonic": 80, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000047, "company": "Render", "title": "Head of Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Modern cloud platform for AI-native app development. $257M total raised, $100M Series C Feb 2026, 4.5M developers. First RevOps hire, VP Revenue reporting. PLG plus enterprise bridge -- Helium 10 credential direct. Stack: Salesforce, HubSpot, Gong, Salesloft, Clay. SQL fluency required -- real gap. Developer tooling vertical, engineering buyer persona entirely outside background.", "gaps": "SQL fluency required, developer tooling vertical, engineering buyer persona", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 4, "vertical": 2, "builder": 5, "moat": 4, "ai": 4, "scalability": 5}, "date": "2026-05-15T12:00:47Z", "fit": 83, "likelihood": 78, "harmonic": 80, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000048, "company": "Merative", "title": "Director, Sales Operations", "compFloor": 167, "compCeiling": 250, "compMid": 208, "status": "watching", "bizModel": "Healthcare", "notes": "IBM Watson Health spin-out, enterprise health data and analytics. Comp $167-250K excellent. Four pillars: Incentive Comp, Performance Analytics, Sales Enablement, Proposal Management. Honeywell covered people management requirement -- 8 analysts across four countries. Health technology vertical strong. IBM lineage culture -- matrixed, process-heavy. Deadline June 1.", "gaps": "Proposal Management/RFP function unfamiliar, IBM-lineage culture", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "sales-only", "reports": "five-eight"}, "scores": {"stack": 4, "scale": 4, "vertical": 4, "builder": 3, "moat": 3, "ai": 4, "scalability": 3}, "date": "2026-05-18T12:00:48Z", "fit": 69, "likelihood": 61, "harmonic": 65, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000049, "company": "LoadUp", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "closed", "bizModel": "Marketplace", "notes": "CLOSED. Wanted Alpharetta in-person and deep HubSpot experience -- both confirmed gaps. Faith-based culture also a mismatch. All three flags materialized as predicted. On-demand junk removal marketplace, business model compelling but role was wrong fit.", "gaps": "Contract not FTE, Alpharetta dealbreaker, faith-based culture, HubSpot depth", "selections": {"location": "inperson-alpharetta", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "date": "2026-05-18T12:00:49Z", "fit": 56, "likelihood": 49, "harmonic": 52, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000050, "company": "DoorDash", "title": "Sr. Manager, Sales Planning & Strategy", "compFloor": 151, "compCeiling": 222, "compMid": 186, "status": "watching", "bizModel": "Marketplace", "notes": "Prior engagement last cycle -- offered $125K, low-balled experience. Current range $151-222K. Senior Manager not Director. Claude literally name-checked in AI requirements. Incentive comp design for SMB Sales team focus. SQL strongly preferred -- gap. Key question: will they anchor to prior low-ball?", "gaps": "Senior Manager not Director, SQL strongly preferred, prior low-ball history", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "sales-only", "reports": "one-four"}, "scores": {"stack": 3, "scale": 5, "vertical": 2, "builder": 4, "moat": 4, "ai": 5, "scalability": 4}, "date": "2026-05-19T12:00:50Z", "fit": 79, "likelihood": 71, "harmonic": 75, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000051, "company": "Candid Health", "title": "Head of Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "Healthcare", "notes": "APPLIED. Healthcare payments infrastructure, automating revenue cycle for providers. Waystar credential is direct -- same customer, same problem space. Five months unfilled. Hub cities Denver/NYC/SF are 4+ days in office; Atlanta is remote eligible. Healthcare RCM vertical is strongest credential in entire tracker.", "gaps": "No comp listed, hub city in-office culture, CPQ/deal desk nice-to-have, consulting preferred", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 5, "builder": 5, "moat": 4, "ai": 3, "scalability": 4}, "date": "2026-05-20T12:00:51Z", "fit": 87, "likelihood": 80, "harmonic": 83, "tier": "apply", "softFlags": [], "dealbreakers": []}, {"id": 1746000052, "company": "FORTNA", "title": "Director of Commercial Excellence", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "watching", "bizModel": "Professional Services", "notes": "Supply chain and warehouse automation consulting/solutions firm. Atlanta HQ. Commercial Excellence is consulting firm version of RevOps. Warehouse/Distribution/Supply Chain vertical entirely outside background. 10+ years required. No comp listed. Honeywell industrial credential is only bridge.", "gaps": "Industrial/supply chain vertical, consulting firm motion, no comp listed", "selections": {"location": "hybrid-atlanta", "reporting": "cro-weak", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 2, "scale": 3, "vertical": 2, "builder": 3, "moat": 3, "ai": 2, "scalability": 3}, "date": "2026-05-20T12:00:52Z", "fit": 58, "likelihood": 48, "harmonic": 53, "tier": "consider", "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": []}, {"id": 1746000053, "company": "HavocAI", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "Defense/Gov", "notes": "APPLIED (repost). Autonomous surface vessels for defense and maritime. $100M raised in under 2 years, CIA In-Q-Tel and Lockheed Martin investors, active DoD contracts. Repost suggests no fit found yet. Candidate now clearance-eligible after lifestyle change -- positive signal for defense-adjacent company. Marketo preferred -- gap but preference not hard requirement. Government procurement sales cycle unfamiliar but Honeywell enterprise motion is closest analog.", "gaps": "Marketo preferred, government procurement motion unfamiliar, defense vertical new", "selections": {"location": "fully-remote", "reporting": "founder", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 5, "moat": 5, "ai": 5, "scalability": 4}, "softFlags": [], "dealbreakers": [], "date": "2026-05-21T12:00:53Z", "fit": 84, "likelihood": 70, "harmonic": 76, "tier": "apply"}, {"id": 1746000054, "company": "Wiza", "title": "Director, GTM Strategy & Operations", "compFloor": 150, "compCeiling": 200, "compMid": 175, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS. B2B prospecting data platform, 850M+ contacts, profitable and fast-growing. Stack includes Claude, Clay, Gong, Nooks, Outreach, HubSpot. Role requires managing multiple GTM Engineers -- profile mismatch. They want someone moving from GTME into leadership (Manuel Vigil archetype) not RevOps leader who can direct one GTME. HubSpot expert required compounds the gap.", "gaps": "Managing multiple GTMEs is profile mismatch, HubSpot expert required, role wants GTME-to-leadership not RevOps-to-GTM", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 4, "moat": 3, "ai": 5, "scalability": 4}, "softFlags": ["HubSpot expert required", "CRO reporting, comp not justified"], "dealbreakers": [], "date": "2026-05-21T12:00:54Z", "fit": 72, "likelihood": 39, "harmonic": 51, "tier": "pass"}, {"id": 1746000055, "company": "TPx", "title": "Director, Revenue Process Strategy & Systems", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS. MSP -- managed services provider, selling IT services to mid-market. 3 years MSP/IT services experience required -- hard disqualifier. Role is process architecture and CRM governance for a PE-backed multi-location org. Salesforce preferred. ConnectWise/Autotask familiarity preferred -- unfamiliar tools. Interesting PE-backed M&A environment pattern but wrong vertical credential.", "gaps": "3 years MSP/IT services required -- hard disqualifier, ConnectWise/Autotask unfamiliar", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 1, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "softFlags": [], "dealbreakers": [], "date": "2026-05-21T12:00:55Z", "fit": 75, "likelihood": 65, "harmonic": 70, "tier": "pass"}, {"id": 1746000056, "company": "Amplify Education", "title": "Director, PreSales Operations", "compFloor": 135, "compCeiling": 150, "compMid": 142, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS. K-12 education curriculum and assessment, 18M students. PreSales Operations is supply chain program management not GTM -- connects product launch readiness to physical materials inventory, BOM structures, ERP systems, fulfillment risk. NetSuite ERP, inventory drawdown, product lifecycle register. Wrong function entirely, not underqualified just wrong role. Comp ceiling $150K also below target.", "gaps": "Wrong function entirely -- supply chain not GTM, NetSuite/ERP unfamiliar, comp below target", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 2, "scale": 3, "vertical": 2, "builder": 3, "moat": 3, "ai": 2, "scalability": 3}, "softFlags": [], "dealbreakers": [], "date": "2026-05-21T12:00:56Z", "fit": 67, "likelihood": 58, "harmonic": 62, "tier": "pass"}, {"id": 1746000057, "company": "Slalom", "title": "Manager, Business Operations", "compFloor": 115, "compCeiling": 145, "compMid": 130, "status": "watching", "bizModel": "Professional Services", "notes": "Distribution anchor. Consulting firm internal ops for Georgia Alabama market. Pipeline management, financial performance, engagement setup for consulting practice. Professional services motion not product GTM. Comp $115-145K below target. Hybrid Atlanta 2 days/week is fine. Salesforce listed as 'preferred' not required -- amusing for a Salesforce implementation partner. Added for bell curve distribution.", "gaps": "Professional services motion, comp below target, Manager not Director, Salesforce not even required", "selections": {"location": "hybrid-atlanta", "reporting": "vp-revops", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 2, "scale": 3, "vertical": 2, "builder": 3, "moat": 3, "ai": 2, "scalability": 3}, "softFlags": [], "dealbreakers": [], "date": "2026-05-21T12:00:57Z", "fit": 61, "likelihood": 59, "harmonic": 60, "tier": "consider"}, {"id": 1746000058, "company": "Google Cloud", "title": "Manager, Business Program Management, Sales Excellence", "compFloor": 165, "compCeiling": 239, "compMid": 202, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED. Google Cloud Sales Excellence team driving consumption growth (usage-based revenue, BigQuery/Vertex AI adoption). On-site Atlanta Midtown -- manageable from Decatur at this comp level. $165-239K base plus bonus plus Google equity is exceptional. 8 applicants when submitted -- rare window. Consumption-based model familiarity is gap but signal-based GTM motion at InvestNext maps to the instrumentation problem they are solving. Evan in network but loose connection. Google potentially using G-Suite bundling to crowd out Snowflake/Databricks at scale -- this role is part of that motion.", "gaps": "Consumption-based model familiarity, on-site Atlanta 5 days, program management not RevOps framing", "selections": {"location": "inperson-atlanta", "reporting": "vp-revops", "scope": "full-gtm", "reports": "one-four"}, "scores": {"stack": 3, "scale": 5, "vertical": 3, "builder": 3, "moat": 5, "ai": 5, "scalability": 5}, "softFlags": ["Full in-office culture change"], "dealbreakers": [], "date": "2026-05-21T12:00:58Z", "fit": 76, "likelihood": 66, "harmonic": 71, "tier": "apply"}, {"id": 1748300001, "company": "OnPay", "title": "Director, Revenue Systems", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "pass", "bizModel": "B2B SaaS", "notes": "PASS. HubSpot-primary shop. CLI-native development approach is incompatible with HubSpot browser-based administration model. Reverse ETL without CLI tooling is fragile. VP RevOps Christopher Woodcock also new to HubSpot. Role is GTM Systems Director by title but RevOps by scope -- would prefer the label match the reality. Helium 10 PLG parallels are strong but tooling mismatch is disqualifying. Pass confirmed after intro call 6/1.", "gaps": "GTM Systems framing skews technical, API/middleware/data warehouse experience preferred, no comp listed", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 2, "builder": 4, "moat": 3, "ai": 4, "scalability": 4}, "softFlags": [], "dealbreakers": [], "date": "2026-05-27T12:00:01Z", "fit": 78, "likelihood": 72, "harmonic": 75, "tier": "pass"}, {"id": 1748300002, "company": "WorkWave", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "applied", "bizModel": "B2B SaaS", "notes": "APPLIED 5/27. Field service management SaaS for pest control, lawn care, cleaning, HVAC, security. Holmdel NJ HQ, acquired by IFS (Swedish enterprise software giant). Just launched WAIve AI optimization platform. IFS acquisition creates real RevOps infrastructure need but adds large parent company political complexity. ServiceTitan is direct competitor already in tracker. Field service vertical outside background.", "gaps": "Field service vertical outside background, IFS enterprise parent complexity, no comp listed", "selections": {"location": "fully-remote", "reporting": "cro-weak", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "softFlags": ["CRO reporting, comp not justified"], "dealbreakers": [], "date": "2026-05-27T12:00:02Z", "fit": 69, "likelihood": 54, "harmonic": 61, "tier": "consider"}, {"id": 1748300003, "company": "WebPT", "title": "Director, Revenue Operations", "compFloor": 120, "compCeiling": 150, "compMid": 135, "status": "applied", "bizModel": "Healthcare", "notes": "APPLIED 5/27. Rehab therapy SaaS, 42000+ practices. Three months open then reposted three weeks ago -- comp band likely below market for the scope, strong signal they will flex. Applied at $165K. Mother-in-law is a user -- genuine product familiarity. Reports to Chief Customer Officer. Full GTM scope including Gainsight, HubSpot, Salesforce, Gong. Builder mandate. 95%+ customer retention signals sticky product.", "gaps": "Comp ceiling $150K below target but three months open suggests flexibility, Gainsight depth, HubSpot depth, CCO reporting unusual", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 3, "vertical": 4, "builder": 4, "moat": 3, "ai": 3, "scalability": 3}, "softFlags": ["HubSpot expert required"], "dealbreakers": [], "date": "2026-05-27T12:00:03Z", "fit": 77, "likelihood": 56, "harmonic": 65, "tier": "consider"}, {"id": 1748400001, "company": "Kalkomey", "title": "Director, Revenue Operations", "compFloor": 0, "compCeiling": 0, "compMid": null, "status": "watching", "bizModel": "B2B SaaS", "notes": "Outdoor recreation certification programs -- hunting, fishing, boating, snowmobiling safety. Government agency partners across North America since 1995. 360+ online learning experiences. Key signal: lead CRM selection and implementation from scratch -- no tool requirement, pure builder mandate. Georgia eligible, fully remote. No HubSpot requirement. Government agency buyer with long sales cycles and RFP processes -- compliance-heavy motion adjacent to Waystar and HHAeXchange. Outdoor recreation mission authentic given Georgia background. No comp listed.", "gaps": "No comp listed, reporting structure unclear, government agency vertical unfamiliar, outdoor recreation niche", "selections": {"location": "fully-remote", "reporting": "chief-of-staff", "scope": "full-plus", "reports": "ic"}, "scores": {"stack": 3, "scale": 2, "vertical": 2, "builder": 5, "moat": 4, "ai": 4, "scalability": 3}, "softFlags": [], "dealbreakers": [], "date": "2026-05-28T12:00:01Z", "fit": 76, "likelihood": 64, "harmonic": 69, "tier": "apply"}, {"id": 1748400002, "company": "EnergyHub", "title": "Senior Manager, Revenue Operations", "compFloor": 150, "compCeiling": 180, "compMid": 165, "status": "watching", "bizModel": "B2B SaaS", "notes": "Demand response and distributed energy resource management for utilities. IoT devices, smart thermostats, EVs, batteries as virtual power plants. Acquired by Alarm.com 2019 -- strategic corporate owner, more stability than PE. $150-180K base at target. Senior Manager title but full GTM scope including Deal Desk, BillingPlatform, forecasting. Stack: Salesforce, HubSpot, BillingPlatform -- dual CRM plus billing layer. SpryPoint parallel -- same utility buyer persona. Climate mission genuine.", "gaps": "Senior Manager not Director, dual CRM complexity, BillingPlatform unfamiliar, utility vertical new", "selections": {"location": "fully-remote", "reporting": "coo-cfo", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 3, "scale": 3, "vertical": 2, "builder": 4, "moat": 4, "ai": 3, "scalability": 4}, "softFlags": [], "dealbreakers": [], "date": "2026-05-28T12:00:02Z", "fit": 81, "likelihood": 70, "harmonic": 75, "tier": "apply"}, {"id": 1748400003, "company": "Incisive", "title": "Director, Revenue Operations", "compFloor": 130, "compCeiling": 160, "compMid": 145, "status": "applied", "bizModel": "Healthcare", "notes": "APPLIED via direct posting and Deep End Talent Strategies (Shawna Lake). Dental technology -- digital restorative workflows, removing financial and operational friction for dentists. PE-backed by Lock 8 Partners, 600+ doctors, 95%+ retention. Salesforce is primary system of record -- HubSpot is secondary bonus not requirement. Reports to VP of Product -- unusual, signals early stage org chart fluidity. Pearl vertical context directly applicable. $130-160K base plus 20% bonus = $156-192K OTE.", "gaps": "VP of Product reporting unusual, comp floor below target, HubSpot secondary bonus, Vitally/Planhat CS platform", "selections": {"location": "fully-remote", "reporting": "vp-revops", "scope": "full-plus", "reports": "one-four"}, "scores": {"stack": 4, "scale": 2, "vertical": 4, "builder": 5, "moat": 3, "ai": 4, "scalability": 3}, "softFlags": [], "dealbreakers": [], "date": "2026-05-28T12:00:03Z", "fit": 78, "likelihood": 74, "harmonic": 76, "tier": "apply"}, {"id": 1748400004, "company": "Amazon Shipping", "title": "Principal Sales Operations Lead", "compFloor": 159, "compCeiling": 215, "compMid": 187, "status": "watching", "bizModel": "Marketplace", "notes": "Amazon Shipping -- third-party logistics competing with UPS and FedEx. Principal level = Staff/Senior Director equivalent at Amazon. $159-215K base Atlanta plus RSUs adding $40-80K annually, total comp potentially $200-280K. Six-page memo culture, Working Backwards documents, metrics above all. Amazon Shipping is newer business unit still using Salesforce rather than internal tools. Rasheed in network worth messaging. Curious gig -- genuine comp upside but Amazon operating model is completely different from everything else in tracker.", "gaps": "Amazon bureaucratic culture, consumption-based logistics motion unfamiliar, internal Amazon tooling over time", "selections": {"location": "inperson-atlanta", "reporting": "vp-revops", "scope": "sales-only", "reports": "one-four"}, "scores": {"stack": 3, "scale": 5, "vertical": 2, "builder": 3, "moat": 5, "ai": 4, "scalability": 5}, "softFlags": ["Full in-office culture change"], "dealbreakers": [], "date": "2026-05-28T12:00:04Z", "fit": 69, "likelihood": 60, "harmonic": 64, "tier": "consider"}];
+  const existing = JSON.parse(localStorage.getItem('job-calibrator-v4') || '[]');
+  const existingIds = new Set(existing.map(j => j.id));
+  const toAdd = SEED.filter(j => !existingIds.has(j.id));
+  if (toAdd.length) {
+    localStorage.setItem('job-calibrator-v4', JSON.stringify([...existing, ...toAdd]));
+  }
+})();
+
+updateLiveScores();
+renderDashboard();
+</script>
+</body>
+</html>
